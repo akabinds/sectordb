@@ -46,9 +46,9 @@ impl CacheBuilder {
         V: PartialEq + Send + Sync + Serialize + DeserializeOwned,
     {
         if self.protected_store_capacity == 0 || self.probationary_store_capacity == 0 {
-            return Err(SectorError::cache_error(
+            return Err(Box::new(SectorError::CacheError(
                 "cache capacity must be greater than 0",
-            ));
+            )));
         }
 
         Ok(Cache {
@@ -206,7 +206,7 @@ where
     fn reserve(&mut self, to_reserve: usize) -> SectorResult<()> {
         (*self)
             .try_reserve(to_reserve)
-            .map_err(|_| SectorError::cache_error("failed to reserve space for cache"))?;
+            .map_err(|_| SectorError::CacheError("failed to reserve additional cache space"))?;
 
         Ok(())
     }

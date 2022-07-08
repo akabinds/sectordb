@@ -1,7 +1,13 @@
 use super::RESERVED_IDENTIFIERS;
 use crate::util::{SectorError, SectorResult};
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, fmt, iter::Peekable, ops::RangeInclusive, str::Chars};
+use std::{
+    borrow::Cow,
+    fmt::{self, Debug},
+    iter::Peekable,
+    ops::RangeInclusive,
+    str::Chars,
+};
 use TokenKind::*;
 
 #[cfg(test)]
@@ -53,7 +59,7 @@ enum TokenKind {
     BwShiftR,
     BwShiftL,
     In,
-    Bind,
+    Binding,
     This,
 
     // Keywords
@@ -119,7 +125,7 @@ impl fmt::Display for TokenKind {
             BwShiftR => write!(f, ">>"),
             BwShiftL => write!(f, "<<"),
             In => write!(f, "=>"),
-            Bind => write!(f, "->"),
+            Binding => write!(f, "->"),
             This => write!(f, "@"),
             Keyword(s) => write!(f, "{}", s),
             StringLiteral(s) => write!(f, "{}", s),
@@ -287,6 +293,7 @@ impl<'a> Lexer<'a> {
                 '.' => matches!(self.peek(), Some(c) if c.is_numeric())
                     .then(|| self.lex_numeric_literal('.'))
                     .unwrap_or_else(|| Ok(self.new_token(Period, 1))),
+                ';' => Ok(self.new_token(Semicolon, 1)),
                 ',' => Ok(self.new_token(Comma, 1)),
                 '=' => matches!(self.peek(), Some(&'='))
                     .then(|| {
@@ -320,7 +327,7 @@ impl<'a> Lexer<'a> {
                     .or_else(|| {
                         matches!(self.peek(), Some(&'>')).then(|| {
                             self.advance();
-                            Ok(self.new_token(Bind, 2))
+                            Ok(self.new_token(Binding, 2))
                         })
                     })
                     .unwrap_or_else(|| Ok(self.new_token(Sub, 1))),
@@ -353,7 +360,7 @@ impl<'a> Lexer<'a> {
 
                                     comment.to_mut().push(c);
                                 } else {
-                                    return Err(SectorError::parse_error(self.cursor.0, self.cursor.1, "unexpected termination while lexing multiline comment"));
+                                    return Err(Box::new(SectorError::ParseError("unexpected termination while lexing multiline comment", self.cursor.0, self.cursor.1)));
                                 }
                             }
 
@@ -384,7 +391,7 @@ impl<'a> Lexer<'a> {
                                     self.advance();
                                     Ok(self.new_token(Abs, 3))
                                 })
-                                .ok_or_else(|| SectorError::parse_error(self.cursor.0, self.cursor.1, "unexpected termination while lexing an operator starting with '<'. expected '>', found EoF"))?
+                                .ok_or_else(|| SectorError::ParseError("unexpected termination while lexing an operator starting with '<'. expected '>', found EoF", self.cursor.0, self.cursor.1))?
                         })
                     })
                     .unwrap_or_else(|| Ok(self.new_token(Lt, 1))),
@@ -428,7 +435,7 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.lex_numeric_literal(c),
                 '\'' => self.lex_char_literal(),
                 '"' => self.lex_string_literal(),
-                _ => Err(SectorError::parse_error(self.cursor.0, self.cursor.1, "unexpected token: {c:?}")),
+                _ => Err(Box::new(SectorError::ParseError("unexpected token", self.cursor.0, self.cursor.1))),
             };
         }
 
@@ -461,27 +468,27 @@ impl<'a> Lexer<'a> {
         let consumed = self.advance();
 
         if let Some('\'') = consumed {
-            return Err(SectorError::parse_error(self.cursor.0, self.cursor.1, "unexpected termination while lexing 'char' literal. expected codepoint, found closing quote"));
+            return Err(Box::new(SectorError::ParseError("unexpected termination while lexing 'char' literal. expected codepoint, found closing quote", self.cursor.0, self.cursor.1)));
         } else if consumed.is_none() {
-            return Err(SectorError::parse_error(
+            return Err(Box::new(SectorError::ParseError(
+                "unexpected termination while lexing 'char' literal. expected codepoint, found EoF",
                 self.cursor.0,
                 self.cursor.1,
-                "unexpected termination while lexing 'char' literal. expected codepoint, found EoF",
-            ));
+            )));
         }
 
         if let Some(&c) = self.peek() {
             if c != '\'' {
-                return Err(SectorError::parse_error(
+                return Err(Box::new(SectorError::ParseError(
+                    "'char' literal can only contain one codepoint",
                     self.cursor.0,
                     self.cursor.1,
-                    "'char' literal can only contain one codepoint",
-                ));
+                )));
             } else {
                 self.advance();
             }
         } else {
-            return Err(SectorError::parse_error(self.cursor.0, self.cursor.1, "unexpected termination while lexing 'char' literal. expected closing quote, found EoF"));
+            return Err(Box::new(SectorError::ParseError("unexpected termination while lexing 'char' literal. expected closing quote, found EoF", self.cursor.0, self.cursor.1)));
         }
 
         Ok(self.new_token(CharacterLiteral(consumed.unwrap()), 3))
@@ -495,11 +502,7 @@ impl<'a> Lexer<'a> {
                 .to_mut()
                 .push_str(&self.consume_until(|c| c == '"'));
         } else {
-            return Err(SectorError::parse_error(
-                self.cursor.0,
-                self.cursor.1,
-                "unexpected termination while lexing 'string' literal. Expected '\"', found EoF",
-            ));
+            return Err(Box::new(SectorError::ParseError("unexpected termination while lexing 'string' literal. expected closing quote, found EoF", self.cursor.0, self.cursor.1)));
         }
 
         self.advance();
@@ -533,11 +536,11 @@ impl<'a> Lexer<'a> {
         }
 
         if value.contains('.') && value.matches('.').count() > 1 {
-            return Err(SectorError::parse_error(
+            return Err(Box::new(SectorError::ParseError(
+                "invalid numeric literal. multiple decimal points found",
                 self.cursor.0,
                 self.cursor.1,
-                "invalid numeric literal: multiple decimal points",
-            ));
+            )));
         }
 
         value.as_ref().chars(); // probably will use `Chars` iterator and methods for checking integrality
@@ -552,12 +555,12 @@ mod tests {
 
     #[test]
     fn test_lex_punctuation() -> SectorResult<()> {
-        let source = r#"( ) [ ] { } . ,"#;
+        let source = r#"( ) [ ] { } . , ;"#;
         let mut lexer = Lexer::new(source);
         let lexed = lexer.lex()?;
 
-        pretty_assert_eq!(lexed.len(), 16);
-        pretty_assert_eq!(lexer.cursor, (1, 16));
+        pretty_assert_eq!(lexed.len(), 18);
+        pretty_assert_eq!(lexer.cursor, (1, 18));
 
         pretty_assert_eq!(
             lexed,
@@ -577,7 +580,9 @@ mod tests {
                 Token(Period, (1, 13..=14)),
                 Token(Whitespace, (1, 14..=15)),
                 Token(Comma, (1, 15..=16)),
-                Token(EoF, (1, 16..=16))
+                Token(Whitespace, (1, 16..=17)),
+                Token(Semicolon, (1, 17..=18)),
+                Token(EoF, (1, 18..=18)),
             ]
         );
 
@@ -595,7 +600,7 @@ mod tests {
         pretty_assert_eq!(
             lexed,
             vec![
-                Token(Bind, (1, 1..=3)),
+                Token(Binding, (1, 1..=3)),
                 Token(Whitespace, (1, 3..=4)),
                 Token(EqTo, (1, 4..=6)),
                 Token(Whitespace, (1, 6..=7)),

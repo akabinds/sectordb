@@ -3,7 +3,7 @@
 //! This module provides implementation for the memory allocator for SectorDB. Memory can be allocated for various purposes,
 //! such as creating a new table, temporarily allocating for a new `Cache` instance, and many more.
 
-use crate::util::{SectorError, SectorResult};
+use crate::util::SectorResult;
 use std::{
     alloc::{AllocError, Allocator, Layout, System},
     num::NonZeroUsize,
