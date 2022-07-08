@@ -1,4 +1,4 @@
-use super::KEYWORDS;
+use super::RESERVED_IDENTIFIERS;
 use crate::util::{SectorError, SectorResult};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt, iter::Peekable, ops::RangeInclusive, str::Chars};
@@ -53,15 +53,8 @@ enum TokenKind {
     BwShiftR,
     BwShiftL,
     In,
-    Assign,
+    Bind,
     This,
-    // `XQ` stands for `XQuery`. These operators are used in the context of a predicate.
-    // *This* `(@)` and *XqThis* `(_)` are the same but used in different contexts.
-    XQThis,
-    XQOr,
-    XQIs,
-    XQIn,
-    XQAnd,
 
     // Keywords
     Keyword(String),
@@ -126,13 +119,8 @@ impl fmt::Display for TokenKind {
             BwShiftR => write!(f, ">>"),
             BwShiftL => write!(f, "<<"),
             In => write!(f, "=>"),
-            Assign => write!(f, "="),
+            Bind => write!(f, "->"),
             This => write!(f, "@"),
-            XQThis => write!(f, "_"),
-            XQOr => write!(f, "or"),
-            XQIs => write!(f, "is"),
-            XQIn => write!(f, "in"),
-            XQAnd => write!(f, "and"),
             Keyword(s) => write!(f, "{}", s),
             StringLiteral(s) => write!(f, "{}", s),
             CharacterLiteral(c) => write!(f, "{}", c),
@@ -159,7 +147,6 @@ pub struct Token(TokenKind, (usize, RangeInclusive<usize>));
 ///
 /// ```
 /// use sector_core::{util::SectorResult,sec::lexer::Lexer};
-/// use sector_core::util::SectorResult;
 ///
 /// fn test_lex() -> SectorResult<()> {
 ///     let source = "select * from users;";
@@ -312,7 +299,7 @@ impl<'a> Lexer<'a> {
                             Ok(self.new_token(In, 2))
                         })
                     })
-                    .unwrap_or_else(|| Ok(self.new_token(Assign, 1))),
+                    .unwrap(),
                 '+' => matches!(self.peek(), Some(c) if c.is_numeric())
                     .then(|| Ok(self.new_token(Pos, 1)))
                     .unwrap_or_else(|| Ok(self.new_token(Add, 1))),
@@ -328,6 +315,12 @@ impl<'a> Lexer<'a> {
                         matches!(self.peek(), Some(&'-')).then(|| {
                             self.advance_by(2, false);
                             Ok(self.new_token(CbRoot, 3))
+                        })
+                    })
+                    .or_else(|| {
+                        matches!(self.peek(), Some(&'>')).then(|| {
+                            self.advance();
+                            Ok(self.new_token(Bind, 2))
                         })
                     })
                     .unwrap_or_else(|| Ok(self.new_token(Sub, 1))),
@@ -430,7 +423,7 @@ impl<'a> Lexer<'a> {
                 '@' => Ok(self.new_token(This, 1)),
                 '_' => matches!(self.peek(), Some(c) if c.is_alphanumeric())
                     .then(|| Ok(self.lex_ident('_')))
-                    .unwrap_or_else(|| Ok(self.new_token(XQThis, 1))),
+                    .unwrap(),
                 'a'..='z' | 'A'..='Z' => Ok(self.lex_ident(c)),
                 '0'..='9' => self.lex_numeric_literal(c),
                 '\'' => self.lex_char_literal(),
@@ -452,12 +445,8 @@ impl<'a> Lexer<'a> {
                 .push_str(&self.consume_until(|c| !c.is_alphanumeric() && c != '_'));
         }
 
-        if KEYWORDS.contains(&&*ident) {
+        if RESERVED_IDENTIFIERS.contains(&&*ident) {
             return match ident.as_ref() {
-                "or" => self.new_token(XQOr, 2),
-                "is" => self.new_token(XQIs, 2),
-                "in" => self.new_token(XQIn, 2),
-                "and" => self.new_token(XQAnd, 3),
                 "null" => self.new_token(NullLiteral, 4),
                 "true" => self.new_token(BooleanLiteral(true), 4),
                 "false" => self.new_token(BooleanLiteral(false), 5),
@@ -597,95 +586,85 @@ mod tests {
 
     #[test]
     fn test_lex_operators() -> SectorResult<()> {
-        let source = "= == => + +1 +20 - -1 -20 * ** / % < <= << > >= >> != & && | || ~ ^ @ _ or is in and <0> -/ --/ 5! 20!";
+        let source = "-> == != @ ^ ~ | || & && 5! 20! > >= >> < <= << % / * ** - -5 -20 -/ --/ + +5 +20 => <0>";
         let mut lexer = Lexer::new(source);
         let lexed = lexer.lex()?;
 
-        pretty_assert_eq!(lexed.len(), 80);
-        pretty_assert_eq!(lexer.cursor, (1, 103));
+        pretty_assert_eq!(lexed.len(), 70);
+        pretty_assert_eq!(lexer.cursor, (1, 89));
         pretty_assert_eq!(
             lexed,
             vec![
-                Token(Assign, (1, 1..=2)),
-                Token(Whitespace, (1, 2..=3)),
-                Token(EqTo, (1, 3..=5)),
-                Token(Whitespace, (1, 5..=6)),
-                Token(In, (1, 6..=8)),
-                Token(Whitespace, (1, 8..=9)),
-                Token(Add, (1, 9..=10)),
-                Token(Whitespace, (1, 10..=11)),
-                Token(Pos, (1, 11..=12)),
-                Token(NumericLiteral("1".to_owned(), true), (1, 12..=13)),
+                Token(Bind, (1, 1..=3)),
+                Token(Whitespace, (1, 3..=4)),
+                Token(EqTo, (1, 4..=6)),
+                Token(Whitespace, (1, 6..=7)),
+                Token(NotEqTo, (1, 7..=9)),
+                Token(Whitespace, (1, 9..=10)),
+                Token(This, (1, 10..=11)),
+                Token(Whitespace, (1, 11..=12)),
+                Token(BwXor, (1, 12..=13)),
                 Token(Whitespace, (1, 13..=14)),
-                Token(Pos, (1, 14..=15)),
-                Token(NumericLiteral("20".to_owned(), true), (1, 15..=17)),
+                Token(BwNot, (1, 14..=15)),
+                Token(Whitespace, (1, 15..=16)),
+                Token(BwOr, (1, 16..=17)),
                 Token(Whitespace, (1, 17..=18)),
-                Token(Sub, (1, 18..=19)),
-                Token(Whitespace, (1, 19..=20)),
-                Token(Neg, (1, 20..=21)),
-                Token(NumericLiteral("1".to_owned(), true), (1, 21..=22)),
+                Token(LogOr, (1, 18..=20)),
+                Token(Whitespace, (1, 20..=21)),
+                Token(BwAnd, (1, 21..=22)),
                 Token(Whitespace, (1, 22..=23)),
-                Token(Neg, (1, 23..=24)),
-                Token(NumericLiteral("20".to_owned(), true), (1, 24..=26)),
-                Token(Whitespace, (1, 26..=27)),
-                Token(Asterisk, (1, 27..=28)),
+                Token(LogAnd, (1, 23..=25)),
+                Token(Whitespace, (1, 25..=26)),
+                Token(NumericLiteral("5".to_owned(), true), (1, 26..=27)),
+                Token(Fact, (1, 27..=28)),
                 Token(Whitespace, (1, 28..=29)),
-                Token(Pow, (1, 29..=31)),
-                Token(Whitespace, (1, 31..=32)),
-                Token(Div, (1, 32..=33)),
-                Token(Whitespace, (1, 33..=34)),
-                Token(Mod, (1, 34..=35)),
-                Token(Whitespace, (1, 35..=36)),
-                Token(Lt, (1, 36..=37)),
+                Token(NumericLiteral("20".to_owned(), true), (1, 29..=31)),
+                Token(Fact, (1, 31..=32)),
+                Token(Whitespace, (1, 32..=33)),
+                Token(Gt, (1, 33..=34)),
+                Token(Whitespace, (1, 34..=35)),
+                Token(GtEq, (1, 35..=37)),
                 Token(Whitespace, (1, 37..=38)),
-                Token(LtEq, (1, 38..=40)),
+                Token(BwShiftR, (1, 38..=40)),
                 Token(Whitespace, (1, 40..=41)),
-                Token(BwShiftL, (1, 41..=43)),
-                Token(Whitespace, (1, 43..=44)),
-                Token(Gt, (1, 44..=45)),
+                Token(Lt, (1, 41..=42)),
+                Token(Whitespace, (1, 42..=43)),
+                Token(LtEq, (1, 43..=45)),
                 Token(Whitespace, (1, 45..=46)),
-                Token(GtEq, (1, 46..=48)),
+                Token(BwShiftL, (1, 46..=48)),
                 Token(Whitespace, (1, 48..=49)),
-                Token(BwShiftR, (1, 49..=51)),
-                Token(Whitespace, (1, 51..=52)),
-                Token(NotEqTo, (1, 52..=54)),
+                Token(Mod, (1, 49..=50)),
+                Token(Whitespace, (1, 50..=51)),
+                Token(Div, (1, 51..=52)),
+                Token(Whitespace, (1, 52..=53)),
+                Token(Asterisk, (1, 53..=54)),
                 Token(Whitespace, (1, 54..=55)),
-                Token(BwAnd, (1, 55..=56)),
-                Token(Whitespace, (1, 56..=57)),
-                Token(LogAnd, (1, 57..=59)),
+                Token(Pow, (1, 55..=57)),
+                Token(Whitespace, (1, 57..=58)),
+                Token(Sub, (1, 58..=59)),
                 Token(Whitespace, (1, 59..=60)),
-                Token(BwOr, (1, 60..=61)),
-                Token(Whitespace, (1, 61..=62)),
-                Token(LogOr, (1, 62..=64)),
-                Token(Whitespace, (1, 64..=65)),
-                Token(BwNot, (1, 65..=66)),
+                Token(Neg, (1, 60..=61)),
+                Token(NumericLiteral("5".to_owned(), true), (1, 61..=62)),
+                Token(Whitespace, (1, 62..=63)),
+                Token(Neg, (1, 63..=64)),
+                Token(NumericLiteral("20".to_owned(), true), (1, 64..=66)),
                 Token(Whitespace, (1, 66..=67)),
-                Token(BwXor, (1, 67..=68)),
-                Token(Whitespace, (1, 68..=69)),
-                Token(This, (1, 69..=70)),
-                Token(Whitespace, (1, 70..=71)),
-                Token(XQThis, (1, 71..=72)),
-                Token(Whitespace, (1, 72..=73)),
-                Token(XQOr, (1, 73..=75)),
+                Token(SqRoot, (1, 67..=69)),
+                Token(Whitespace, (1, 69..=70)),
+                Token(CbRoot, (1, 70..=73)),
+                Token(Whitespace, (1, 73..=74)),
+                Token(Add, (1, 74..=75)),
                 Token(Whitespace, (1, 75..=76)),
-                Token(XQIs, (1, 76..=78)),
+                Token(Pos, (1, 76..=77)),
+                Token(NumericLiteral("5".to_owned(), true), (1, 77..=78)),
                 Token(Whitespace, (1, 78..=79)),
-                Token(XQIn, (1, 79..=81)),
-                Token(Whitespace, (1, 81..=82)),
-                Token(XQAnd, (1, 82..=85)),
+                Token(Pos, (1, 79..=80)),
+                Token(NumericLiteral("20".to_owned(), true), (1, 80..=82)),
+                Token(Whitespace, (1, 82..=83)),
+                Token(In, (1, 83..=85)),
                 Token(Whitespace, (1, 85..=86)),
                 Token(Abs, (1, 86..=89)),
-                Token(Whitespace, (1, 89..=90)),
-                Token(SqRoot, (1, 90..=92)),
-                Token(Whitespace, (1, 92..=93)),
-                Token(CbRoot, (1, 93..=96)),
-                Token(Whitespace, (1, 96..=97)),
-                Token(NumericLiteral("5".to_owned(), true), (1, 97..=98)),
-                Token(Fact, (1, 98..=99)),
-                Token(Whitespace, (1, 99..=100)),
-                Token(NumericLiteral("20".to_owned(), true), (1, 100..=102)),
-                Token(Fact, (1, 102..=103)),
-                Token(EoF, (1, 103..=103))
+                Token(EoF, (1, 89..=89))
             ]
         );
 
@@ -694,141 +673,99 @@ mod tests {
 
     #[test]
     fn test_lex_keywords() -> SectorResult<()> {
-        let source = "or is in and create proc insert table with into return select from where update set on count delete link match left right cursor drop move next transaction begin commit abort index for exec var if elif else string char dyn guid int bigint short long decimal bigdecimal hex scn bool scr obj dtm tsn dto bin json xml sql null true false";
+        let source = "proc index on transaction exec return cursor drop from update where set match right left inner temp select insert into with bind within scale down up str int shortint tinyint bigint bool float bin hex scn guid arr obj char bit complex";
         let mut lexer = Lexer::new(source);
         let lexed = lexer.lex()?;
 
-        pretty_assert_eq!(lexed.len(), 126);
-        pretty_assert_eq!(lexer.cursor, (1, 335));
+        pretty_assert_eq!(lexed.len(), 84);
+        pretty_assert_eq!(lexer.cursor, (1, 235));
         pretty_assert_eq!(
             lexed,
             vec![
-                Token(XQOr, (1, 1..=3)),
-                Token(Whitespace, (1, 3..=4)),
-                Token(XQIs, (1, 4..=6)),
-                Token(Whitespace, (1, 6..=7)),
-                Token(XQIn, (1, 7..=9)),
-                Token(Whitespace, (1, 9..=10)),
-                Token(XQAnd, (1, 10..=13)),
-                Token(Whitespace, (1, 13..=14)),
-                Token(Keyword("create".to_owned()), (1, 14..=20)),
-                Token(Whitespace, (1, 20..=21)),
-                Token(Keyword("proc".to_owned()), (1, 21..=25)),
-                Token(Whitespace, (1, 25..=26)),
-                Token(Keyword("insert".to_owned()), (1, 26..=32)),
-                Token(Whitespace, (1, 32..=33)),
-                Token(Keyword("table".to_owned()), (1, 33..=38)),
+                Token(Keyword("proc".to_owned()), (1, 1..=5)),
+                Token(Whitespace, (1, 5..=6)),
+                Token(Keyword("index".to_owned()), (1, 6..=11)),
+                Token(Whitespace, (1, 11..=12)),
+                Token(Keyword("on".to_owned()), (1, 12..=14)),
+                Token(Whitespace, (1, 14..=15)),
+                Token(Keyword("transaction".to_owned()), (1, 15..=26)),
+                Token(Whitespace, (1, 26..=27)),
+                Token(Keyword("exec".to_owned()), (1, 27..=31)),
+                Token(Whitespace, (1, 31..=32)),
+                Token(Keyword("return".to_owned()), (1, 32..=38)),
                 Token(Whitespace, (1, 38..=39)),
-                Token(Keyword("with".to_owned()), (1, 39..=43)),
-                Token(Whitespace, (1, 43..=44)),
-                Token(Keyword("into".to_owned()), (1, 44..=48)),
-                Token(Whitespace, (1, 48..=49)),
-                Token(Keyword("return".to_owned()), (1, 49..=55)),
+                Token(Keyword("cursor".to_owned()), (1, 39..=45)),
+                Token(Whitespace, (1, 45..=46)),
+                Token(Keyword("drop".to_owned()), (1, 46..=50)),
+                Token(Whitespace, (1, 50..=51)),
+                Token(Keyword("from".to_owned()), (1, 51..=55)),
                 Token(Whitespace, (1, 55..=56)),
-                Token(Keyword("select".to_owned()), (1, 56..=62)),
+                Token(Keyword("update".to_owned()), (1, 56..=62)),
                 Token(Whitespace, (1, 62..=63)),
-                Token(Keyword("from".to_owned()), (1, 63..=67)),
-                Token(Whitespace, (1, 67..=68)),
-                Token(Keyword("where".to_owned()), (1, 68..=73)),
-                Token(Whitespace, (1, 73..=74)),
-                Token(Keyword("update".to_owned()), (1, 74..=80)),
-                Token(Whitespace, (1, 80..=81)),
-                Token(Keyword("set".to_owned()), (1, 81..=84)),
+                Token(Keyword("where".to_owned()), (1, 63..=68)),
+                Token(Whitespace, (1, 68..=69)),
+                Token(Keyword("set".to_owned()), (1, 69..=72)),
+                Token(Whitespace, (1, 72..=73)),
+                Token(Keyword("match".to_owned()), (1, 73..=78)),
+                Token(Whitespace, (1, 78..=79)),
+                Token(Keyword("right".to_owned()), (1, 79..=84)),
                 Token(Whitespace, (1, 84..=85)),
-                Token(Keyword("on".to_owned()), (1, 85..=87)),
-                Token(Whitespace, (1, 87..=88)),
-                Token(Keyword("count".to_owned()), (1, 88..=93)),
-                Token(Whitespace, (1, 93..=94)),
-                Token(Keyword("delete".to_owned()), (1, 94..=100)),
+                Token(Keyword("left".to_owned()), (1, 85..=89)),
+                Token(Whitespace, (1, 89..=90)),
+                Token(Keyword("inner".to_owned()), (1, 90..=95)),
+                Token(Whitespace, (1, 95..=96)),
+                Token(Keyword("temp".to_owned()), (1, 96..=100)),
                 Token(Whitespace, (1, 100..=101)),
-                Token(Keyword("link".to_owned()), (1, 101..=105)),
-                Token(Whitespace, (1, 105..=106)),
-                Token(Keyword("match".to_owned()), (1, 106..=111)),
-                Token(Whitespace, (1, 111..=112)),
-                Token(Keyword("left".to_owned()), (1, 112..=116)),
-                Token(Whitespace, (1, 116..=117)),
-                Token(Keyword("right".to_owned()), (1, 117..=122)),
-                Token(Whitespace, (1, 122..=123)),
-                Token(Keyword("cursor".to_owned()), (1, 123..=129)),
+                Token(Keyword("select".to_owned()), (1, 101..=107)),
+                Token(Whitespace, (1, 107..=108)),
+                Token(Keyword("insert".to_owned()), (1, 108..=114)),
+                Token(Whitespace, (1, 114..=115)),
+                Token(Keyword("into".to_owned()), (1, 115..=119)),
+                Token(Whitespace, (1, 119..=120)),
+                Token(Keyword("with".to_owned()), (1, 120..=124)),
+                Token(Whitespace, (1, 124..=125)),
+                Token(Keyword("bind".to_owned()), (1, 125..=129)),
                 Token(Whitespace, (1, 129..=130)),
-                Token(Keyword("drop".to_owned()), (1, 130..=134)),
-                Token(Whitespace, (1, 134..=135)),
-                Token(Keyword("move".to_owned()), (1, 135..=139)),
-                Token(Whitespace, (1, 139..=140)),
-                Token(Keyword("next".to_owned()), (1, 140..=144)),
-                Token(Whitespace, (1, 144..=145)),
-                Token(Keyword("transaction".to_owned()), (1, 145..=156)),
-                Token(Whitespace, (1, 156..=157)),
-                Token(Keyword("begin".to_owned()), (1, 157..=162)),
-                Token(Whitespace, (1, 162..=163)),
-                Token(Keyword("commit".to_owned()), (1, 163..=169)),
-                Token(Whitespace, (1, 169..=170)),
-                Token(Keyword("abort".to_owned()), (1, 170..=175)),
+                Token(Keyword("within".to_owned()), (1, 130..=136)),
+                Token(Whitespace, (1, 136..=137)),
+                Token(Keyword("scale".to_owned()), (1, 137..=142)),
+                Token(Whitespace, (1, 142..=143)),
+                Token(Keyword("down".to_owned()), (1, 143..=147)),
+                Token(Whitespace, (1, 147..=148)),
+                Token(Keyword("up".to_owned()), (1, 148..=150)),
+                Token(Whitespace, (1, 150..=151)),
+                Token(Keyword("str".to_owned()), (1, 151..=154)),
+                Token(Whitespace, (1, 154..=155)),
+                Token(Keyword("int".to_owned()), (1, 155..=158)),
+                Token(Whitespace, (1, 158..=159)),
+                Token(Keyword("shortint".to_owned()), (1, 159..=167)),
+                Token(Whitespace, (1, 167..=168)),
+                Token(Keyword("tinyint".to_owned()), (1, 168..=175)),
                 Token(Whitespace, (1, 175..=176)),
-                Token(Keyword("index".to_owned()), (1, 176..=181)),
-                Token(Whitespace, (1, 181..=182)),
-                Token(Keyword("for".to_owned()), (1, 182..=185)),
-                Token(Whitespace, (1, 185..=186)),
-                Token(Keyword("exec".to_owned()), (1, 186..=190)),
-                Token(Whitespace, (1, 190..=191)),
-                Token(Keyword("var".to_owned()), (1, 191..=194)),
-                Token(Whitespace, (1, 194..=195)),
-                Token(Keyword("if".to_owned()), (1, 195..=197)),
+                Token(Keyword("bigint".to_owned()), (1, 176..=182)),
+                Token(Whitespace, (1, 182..=183)),
+                Token(Keyword("bool".to_owned()), (1, 183..=187)),
+                Token(Whitespace, (1, 187..=188)),
+                Token(Keyword("float".to_owned()), (1, 188..=193)),
+                Token(Whitespace, (1, 193..=194)),
+                Token(Keyword("bin".to_owned()), (1, 194..=197)),
                 Token(Whitespace, (1, 197..=198)),
-                Token(Keyword("elif".to_owned()), (1, 198..=202)),
-                Token(Whitespace, (1, 202..=203)),
-                Token(Keyword("else".to_owned()), (1, 203..=207)),
-                Token(Whitespace, (1, 207..=208)),
-                Token(Keyword("string".to_owned()), (1, 208..=214)),
+                Token(Keyword("hex".to_owned()), (1, 198..=201)),
+                Token(Whitespace, (1, 201..=202)),
+                Token(Keyword("scn".to_owned()), (1, 202..=205)),
+                Token(Whitespace, (1, 205..=206)),
+                Token(Keyword("guid".to_owned()), (1, 206..=210)),
+                Token(Whitespace, (1, 210..=211)),
+                Token(Keyword("arr".to_owned()), (1, 211..=214)),
                 Token(Whitespace, (1, 214..=215)),
-                Token(Keyword("char".to_owned()), (1, 215..=219)),
-                Token(Whitespace, (1, 219..=220)),
-                Token(Keyword("dyn".to_owned()), (1, 220..=223)),
+                Token(Keyword("obj".to_owned()), (1, 215..=218)),
+                Token(Whitespace, (1, 218..=219)),
+                Token(Keyword("char".to_owned()), (1, 219..=223)),
                 Token(Whitespace, (1, 223..=224)),
-                Token(Keyword("guid".to_owned()), (1, 224..=228)),
-                Token(Whitespace, (1, 228..=229)),
-                Token(Keyword("int".to_owned()), (1, 229..=232)),
-                Token(Whitespace, (1, 232..=233)),
-                Token(Keyword("bigint".to_owned()), (1, 233..=239)),
-                Token(Whitespace, (1, 239..=240)),
-                Token(Keyword("short".to_owned()), (1, 240..=245)),
-                Token(Whitespace, (1, 245..=246)),
-                Token(Keyword("long".to_owned()), (1, 246..=250)),
-                Token(Whitespace, (1, 250..=251)),
-                Token(Keyword("decimal".to_owned()), (1, 251..=258)),
-                Token(Whitespace, (1, 258..=259)),
-                Token(Keyword("bigdecimal".to_owned()), (1, 259..=269)),
-                Token(Whitespace, (1, 269..=270)),
-                Token(Keyword("hex".to_owned()), (1, 270..=273)),
-                Token(Whitespace, (1, 273..=274)),
-                Token(Keyword("scn".to_owned()), (1, 274..=277)),
-                Token(Whitespace, (1, 277..=278)),
-                Token(Keyword("bool".to_owned()), (1, 278..=282)),
-                Token(Whitespace, (1, 282..=283)),
-                Token(Keyword("scr".to_owned()), (1, 283..=286)),
-                Token(Whitespace, (1, 286..=287)),
-                Token(Keyword("obj".to_owned()), (1, 287..=290)),
-                Token(Whitespace, (1, 290..=291)),
-                Token(Keyword("dtm".to_owned()), (1, 291..=294)),
-                Token(Whitespace, (1, 294..=295)),
-                Token(Keyword("tsn".to_owned()), (1, 295..=298)),
-                Token(Whitespace, (1, 298..=299)),
-                Token(Keyword("dto".to_owned()), (1, 299..=302)),
-                Token(Whitespace, (1, 302..=303)),
-                Token(Keyword("bin".to_owned()), (1, 303..=306)),
-                Token(Whitespace, (1, 306..=307)),
-                Token(Keyword("json".to_owned()), (1, 307..=311)),
-                Token(Whitespace, (1, 311..=312)),
-                Token(Keyword("xml".to_owned()), (1, 312..=315)),
-                Token(Whitespace, (1, 315..=316)),
-                Token(Keyword("sql".to_owned()), (1, 316..=319)),
-                Token(Whitespace, (1, 319..=320)),
-                Token(NullLiteral, (1, 320..=324)),
-                Token(Whitespace, (1, 324..=325)),
-                Token(BooleanLiteral(true), (1, 325..=329)),
-                Token(Whitespace, (1, 329..=330)),
-                Token(BooleanLiteral(false), (1, 330..=335)),
-                Token(EoF, (1, 335..=335))
+                Token(Keyword("bit".to_owned()), (1, 224..=227)),
+                Token(Whitespace, (1, 227..=228)),
+                Token(Keyword("complex".to_owned()), (1, 228..=235)),
+                Token(EoF, (1, 235..=235))
             ]
         );
 
@@ -930,39 +867,48 @@ mod tests {
 
     // #[test]
     // fn test_lex_literals() -> SectorResult<()> {
-    //     let source = "'c' \"string\" 1 10 .1 0.1 0o10 0x10 10e5 10e-5 2.1e5 2.1e-5";
+    //     let source = "'c' \"string\" 1 10 .1 0.1 0o10 0x10 0b10 10e5 10e-5 2.1e5 2.1e-5 true false";
     //     let mut lexer = Lexer::new(source);
     //     let lexed = lexer.lex()?;
 
-    //     pretty_assert_eq!(lexed.len(), 29);
-    //     pretty_assert_eq!(lexer.cursor, (1, 59));
+    //     println!("{:?}", lexed);
+
+    //     pretty_assert_eq!(lexed.len(), 31);
+    //     pretty_assert_eq!(lexer.cursor, (1, 75));
     //     pretty_assert_eq!(
     //         lexed,
     //         vec![
     //             Token(CharacterLiteral('c'), (1, 1..=4)),
     //             Token(Whitespace, (1, 4..=5)),
-    //             Token(StringLiteral("string".to_owned()), (1, 5..=12)),
-    //             Token(Whitespace, (1, 12..=13)),
-    //             Token(NumericLiteral("1".to_owned(), true), (1, 13..=14)),
-    //             Token(Whitespace, (1, 14..=15)),
-    //             Token(NumericLiteral("10".to_owned(), true), (1, 15..=16)),
-    //             Token(Whitespace, (1, 16..=17)),
-    //             Token(NumericLiteral(".1".to_owned(), false), (1, 17..=19)),
-    //             Token(Whitespace, (1, 19..=20)),
-    //             Token(NumericLiteral("0.1".to_owned(), false), (1, 20..=23)),
-    //             Token(Whitespace, (1, 23..=24)),
-    //             Token(NumericLiteral("0o10".to_owned(), true), (1, 24..=28)),
-    //             Token(Whitespace, (1, 28..=29)),
-    //             Token(NumericLiteral("0x10".to_owned(), true), (1, 29..=33)),
-    //             Token(Whitespace, (1, 33..=34)),
-    //             Token(NumericLiteral("10e5".to_owned(), true), (1, 34..=38)),
-    //             Token(Whitespace, (1, 38..=39)),
-    //             Token(NumericLiteral("10e-5".to_owned(), false), (1, 39..=44)),
-    //             Token(Whitespace, (1, 44..=45)),
-    //             Token(NumericLiteral("2.1e5".to_owned(), true), (1, 45..=50)),
-    //             Token(Whitespace, (1, 50..=51)),
-    //             Token(NumericLiteral("2.1e-5".to_owned(), false), (1, 51..=56)),
-    //             Token(EoF, (1, 56..=56))
+    //             Token(StringLiteral("string".to_owned()), (1, 5..=13)),
+    //             Token(Whitespace, (1, 13..=14)),
+    //             Token(NumericLiteral("1".to_owned(), true), (1, 14..=15)),
+    //             Token(Whitespace, (1, 15..=16)),
+    //             Token(NumericLiteral("10".to_owned(), true), (1, 16..=18)),
+    //             Token(Whitespace, (1, 18..=19)),
+    //             Token(NumericLiteral(".1".to_owned(), true), (1, 19..=21)),
+    //             Token(Whitespace, (1, 21..=22)),
+    //             Token(NumericLiteral("0.1".to_owned(), true), (1, 22..=25)),
+    //             Token(Whitespace, (1, 25..=26)),
+    //             Token(NumericLiteral("0o10".to_owned(), true), (1, 26..=30)),
+    //             Token(Whitespace, (1, 30..=31)),
+    //             Token(NumericLiteral("0x10".to_owned(), true), (1, 31..=35)),
+    //             Token(Whitespace, (1, 35..=36)),
+    //             Token(NumericLiteral("0b10".to_owned(), true), (1, 36..=40)),
+    //             Token(Whitespace, (1, 40..=41)),
+    //             Token(NumericLiteral("10e5".to_owned(), true), (1, 41..=45)),
+    //             Token(Whitespace, (1, 45..=46)),
+    //             Token(NumericLiteral("10e-5".to_owned(), false), (1, 46..=51)),
+    //             Token(Whitespace, (1, 51..=52)),
+    //             Token(NumericLiteral("2.1e5".to_owned(), true), (1, 52..=57)),
+    //             Token(Whitespace, (1, 57..=58)),
+    //             Token(NumericLiteral("2.1e-5".to_owned(), true), (1, 58..=64)),
+    //             Token(NumericLiteral("5".to_owned(), true), (1, 63..=64)),
+    //             Token(Whitespace, (1, 64..=65)),
+    //             Token(BooleanLiteral(true), (1, 65..=69)),
+    //             Token(Whitespace, (1, 69..=70)),
+    //             Token(BooleanLiteral(false), (1, 70..=75)),
+    //             Token(EoF, (1, 75..=75))
     //         ]
     //     );
 
