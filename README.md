@@ -5,11 +5,16 @@
 # Table of Contents
 
 - [Overview](#overview)
+- [Roadmap](#roadmap)
 - [Contributing](#contributing)
 
 # Overview
 
 SectorDB is a relational database management system (RDBMS) designed to be secure, modern, intuitive, concurrent, extensible, fault tolerant, and scalable. SectorDB is able to achieve many of these design goals by leveraging the power of both the Rust and Elixir programming languages.
+
+# Roadmap
+
+Check out the roadmap and todo tasks for SectorDB [here](ROADMAP.md).
 
 # Contributing
 
