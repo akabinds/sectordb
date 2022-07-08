@@ -1,0 +1,16 @@
+[package]
+name = "sector"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A luxorious database for a modern time"
+readme = "../README.md"
+repository = "https://github.com/akabinds/sectordb"
+
+[dependencies]
+tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+
+[[bin]]
+name = "sector"
+path = "src/main.rs"
+
