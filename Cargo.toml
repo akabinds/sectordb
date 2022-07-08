@@ -2,6 +2,7 @@
 members = [
     "sector",
     "sector-core",
+    "sector-core/src/concurrency/native/sector-concurrency",
     "api",
 ]
 

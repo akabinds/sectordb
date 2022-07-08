@@ -1137,6 +1137,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sector-concurrency"
+version = "0.1.0"
+dependencies = [
+ "rustler",
+]
+
+[[package]]
 name = "sector-core"
 version = "0.1.0"
 dependencies = [
@@ -1150,7 +1157,6 @@ dependencies = [
  "pretty_assertions",
  "prost",
  "rayon",
- "rustler",
  "serde",
  "serde_json",
  "timespan",
