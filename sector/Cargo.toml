@@ -2,6 +2,7 @@
 name = "sector"
 version = "0.1.0"
 edition = "2021"
+authors = ["Sector Developers"]
 license = "MIT OR Apache-2.0"
 description = "A luxorious database for a modern time"
 readme = "../README.md"
@@ -9,8 +10,17 @@ repository = "https://github.com/akabinds/sectordb"
 
 [dependencies]
 tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+sector-core = { path = "../sector-core" }
+
+[dev-dependencies]
+criterion = "0.3.6"
+sector-core = { path = "../sector-core" }
 
 [[bin]]
 name = "sector"
 path = "src/main.rs"
 
+[[bench]]
+name = "sector-bench"
+path = "src/benchmark/bench.rs"
+harness = false
