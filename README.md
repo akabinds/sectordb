@@ -1,6 +1,6 @@
 <h1 align="center">SectorDB</h1>
 
-<p align="center">A luxorious database for a modern time</p>
+<p align="center">A luxurious database for a modern time</p>
 
 # Table of Contents
 
