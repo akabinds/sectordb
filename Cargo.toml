@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "sector",
+    "sector-api",
     "sector-core",
     "sector-core/src/concurrency/native/sector-concurrency",
-    "api",
 ]
 
 [profile.release]

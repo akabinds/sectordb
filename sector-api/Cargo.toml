@@ -1,8 +1,9 @@
 [package]
-name = "api"
+name = "sector-api"
 version = "0.1.0"
 edition = "2021"
 authors = ["Sector Developers"]
+description = "Public interface for interacting with and extending SectorDB"
 readme = "../README.md"
 
 [dependencies]
