@@ -168,6 +168,7 @@ where
         }
     }
 
+    #[allow(clippy::let_and_return)]
     fn put(&mut self, key: K, value: V) -> Option<CacheEntry<K, V>> {
         let inserted = (*self).insert(
             KeyRef {
@@ -297,6 +298,7 @@ where
         self.protected_store.put(key, value)
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_probationary(&mut self, key: K) -> Option<CacheEntry<K, V>> {
         todo!();
     }

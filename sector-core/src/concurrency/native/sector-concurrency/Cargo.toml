@@ -12,3 +12,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.25.0"
+sector-core = { path = "../../../../" }

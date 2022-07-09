@@ -1211,6 +1211,7 @@ name = "sector-concurrency"
 version = "0.1.0"
 dependencies = [
  "rustler",
+ "sector-core",
 ]
 
 [[package]]

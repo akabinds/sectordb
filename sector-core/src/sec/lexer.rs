@@ -1,13 +1,7 @@
 use super::RESERVED_IDENTIFIERS;
 use crate::util::{SectorError, SectorResult};
 use serde::{Deserialize, Serialize};
-use std::{
-    borrow::Cow,
-    fmt::{self, Debug},
-    iter::Peekable,
-    ops::RangeInclusive,
-    str::Chars,
-};
+use std::{borrow::Cow, fmt, iter::Peekable, ops::RangeInclusive, str::Chars};
 use TokenKind::*;
 
 #[cfg(test)]
@@ -82,7 +76,6 @@ enum TokenKind {
 
     // Other
     SingleLineComment(String),
-    MultiLineComment(String),
     EoF,
 }
 
@@ -138,7 +131,6 @@ impl fmt::Display for TokenKind {
             Whitespace => write!(f, " "),
             Ident(s) => write!(f, "{}", s),
             SingleLineComment(s) => write!(f, "// {}", s),
-            MultiLineComment(s) => write!(f, "/* {} */", s),
             EoF => write!(f, "EOF"),
         }
     }
@@ -198,8 +190,6 @@ impl<'a> Lexer<'a> {
             tokens.push(token);
         }
 
-        // need to fix `EoF` token not being pushed inside `lex_token` when `advance` returns `None`
-        // this push below should be temporary
         if self.at_end() {
             tokens.push(self.new_token(EoF, 0));
         }
@@ -233,23 +223,10 @@ impl<'a> Lexer<'a> {
 
     /// Wrapper around `advance` to advance by `times` times.
     /// This is to prevent having to call `advance` multiple times in the case
-    /// that we want to advance by more than one character. This method optionally return a `Vec` of the characters
-    /// that were consumed while advancing `times` times, based on a boolean passed as `vec_out`.
-    fn advance_by(&mut self, times: usize, vec_out: bool) -> Option<Vec<char>> {
-        if vec_out {
-            let mut consumed = Vec::with_capacity(times);
-
-            for _ in 0..times {
-                consumed.push(self.advance()?);
-            }
-
-            Some(consumed)
-        } else {
-            for _ in 0..times {
-                self.advance();
-            }
-
-            None
+    /// that we want to advance by more than one character.
+    fn advance_by(&mut self, times: usize) {
+        for _ in 0..times {
+            self.advance();
         }
     }
 
@@ -272,17 +249,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_token(&mut self) -> SectorResult<Token> {
-        // TODO:
-        // - finish implementing multi-line comments
-        // - fix Tab (`\t`) lexing
-        // - finish `lex_numeric_literal`
-        // - implement lexing for special things like generics, procedure calls, this references, etc.
-        // - think about edge cases
-
         if let Some(c) = self.advance() {
             return match c {
                 '\n' => Ok(self.new_token(Newline, 1)),
-                '\t' => Ok(self.new_token(Tab, 4)),
+                '\t' => Ok(self.new_token(Tab, 4)), // fix
                 ' ' => Ok(self.new_token(Whitespace, 1)),
                 '(' => Ok(self.new_token(LParen, 1)),
                 ')' => Ok(self.new_token(RParen, 1)),
@@ -320,7 +290,7 @@ impl<'a> Lexer<'a> {
                     })
                     .or_else(|| {
                         matches!(self.peek(), Some(&'-')).then(|| {
-                            self.advance_by(2, false);
+                            self.advance_by(2);
                             Ok(self.new_token(CbRoot, 3))
                         })
                     })
@@ -346,30 +316,6 @@ impl<'a> Lexer<'a> {
                             comment.len() + 2,
                         ))
                     })
-                    .or_else(|| {
-                        matches!(self.peek(), Some(&'*')).then(|| {
-                            self.advance();
-                            let mut comment = Cow::from(String::new());
-
-                            loop {
-                                if let Some(c) = self.advance() {
-                                    if c == '*' && self.peek().map_or(false, |&c| c == '/') {
-                                        self.advance();
-                                        break;
-                                    }
-
-                                    comment.to_mut().push(c);
-                                } else {
-                                    return Err(Box::new(SectorError::ParseError("unexpected termination while lexing multiline comment", self.cursor.0, self.cursor.1)));
-                                }
-                            }
-
-                            Ok(self.new_token(
-                                MultiLineComment(comment.trim().to_string()),
-                                comment.len(),
-                            ))
-                        })
-                    })
                     .unwrap_or_else(|| Ok(self.new_token(Div, 1))),
                 '%' => Ok(self.new_token(Mod, 1)),
                 '<' => matches!(self.peek(), Some(&'='))
@@ -391,7 +337,7 @@ impl<'a> Lexer<'a> {
                                     self.advance();
                                     Ok(self.new_token(Abs, 3))
                                 })
-                                .ok_or_else(|| SectorError::ParseError("unexpected termination while lexing an operator starting with '<'. expected '>', found EoF", self.cursor.0, self.cursor.1))?
+                                .ok_or(SectorError::ParseError("unexpected termination while lexing an operator starting with '<'. expected '>', found EoF", self.cursor.0, self.cursor.1))?
                         })
                     })
                     .unwrap_or_else(|| Ok(self.new_token(Lt, 1))),
@@ -439,6 +385,7 @@ impl<'a> Lexer<'a> {
             };
         }
 
+        // fix not reaching?
         Ok(self.new_token(EoF, 0))
     }
 
@@ -513,26 +460,14 @@ impl<'a> Lexer<'a> {
         ))
     }
 
-    #[allow(unused_must_use)]
     fn lex_numeric_literal(&mut self, first: char) -> SectorResult<Token> {
-        // Temporary reference to help with integral checks
-        //
-        // Integral:
-        // integers (1, 2, 10, 50, -20, -50, 0, etc)
-        // hexadecimal (0xFF0, 0xFA2, etc)
-        // octal (0o777, 0o0, etc)
-        // binary (0b1010, 0b0, etc)
-        //
-        // Non-integral:
-        // floating-point numbers/decimals (1.0, 2.0, 10.0, 50.0, -20.0, -50.0, 0.0, etc)
-
         let mut integral = true;
         let mut value = Cow::from(String::from(first));
 
         if !self.at_end() {
             value
                 .to_mut()
-                .push_str(&self.consume_until(|c| !c.is_alphanumeric() && c != '.'));
+                .push_str(&self.consume_until(|c| !c.is_alphanumeric() && c != '.' && c != '-'));
         }
 
         if value.contains('.') && value.matches('.').count() > 1 {
@@ -543,7 +478,9 @@ impl<'a> Lexer<'a> {
             )));
         }
 
-        value.as_ref().chars(); // probably will use `Chars` iterator and methods for checking integrality
+        if value.chars().any(|c| c == '.' || c == 'e' || c == 'E') {
+            integral = false;
+        }
 
         Ok(self.new_token(NumericLiteral(value.to_string(), integral), value.len()))
     }
@@ -561,7 +498,6 @@ mod tests {
 
         pretty_assert_eq!(lexed.len(), 18);
         pretty_assert_eq!(lexer.cursor, (1, 18));
-
         pretty_assert_eq!(
             lexed,
             vec![
@@ -857,66 +793,50 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_lex_multi_line_comment() -> SectorResult<()> {
-    //     let source = "/* hello\nworld */";
-    //     let mut lexer = Lexer::new(source);
-    //     let lexed = lexer.lex()?;
+    #[test]
+    fn test_lex_literals() -> SectorResult<()> {
+        let source = "'c' \"string\" 1 10 .1 0.1 0o10 0x10 0b10 10e5 10e-5 2.1e5 2.1e-5 true false";
+        let mut lexer = Lexer::new(source);
+        let lexed = lexer.lex()?;
 
-    //     pretty_assert_eq!(lexed.len(), 2);
-    //     pretty_assert_eq!(lexer.cursor, (1, 1));
-    //     pretty_assert_eq!(lexed, vec![]);
+        pretty_assert_eq!(lexed.len(), 30);
+        pretty_assert_eq!(lexer.cursor, (1, 75));
+        pretty_assert_eq!(
+            lexed,
+            vec![
+                Token(CharacterLiteral('c'.to_owned()), (1, 1..=4)),
+                Token(Whitespace, (1, 4..=5)),
+                Token(StringLiteral("string".to_owned()), (1, 5..=13)),
+                Token(Whitespace, (1, 13..=14)),
+                Token(NumericLiteral("1".to_owned(), true), (1, 14..=15)),
+                Token(Whitespace, (1, 15..=16)),
+                Token(NumericLiteral("10".to_owned(), true), (1, 16..=18)),
+                Token(Whitespace, (1, 18..=19)),
+                Token(NumericLiteral(".1".to_owned(), false), (1, 19..=21)),
+                Token(Whitespace, (1, 21..=22)),
+                Token(NumericLiteral("0.1".to_owned(), false), (1, 22..=25)),
+                Token(Whitespace, (1, 25..=26)),
+                Token(NumericLiteral("0o10".to_owned(), true), (1, 26..=30)),
+                Token(Whitespace, (1, 30..=31)),
+                Token(NumericLiteral("0x10".to_owned(), true), (1, 31..=35)),
+                Token(Whitespace, (1, 35..=36)),
+                Token(NumericLiteral("0b10".to_owned(), true), (1, 36..=40)),
+                Token(Whitespace, (1, 40..=41)),
+                Token(NumericLiteral("10e5".to_owned(), false), (1, 41..=45)),
+                Token(Whitespace, (1, 45..=46)),
+                Token(NumericLiteral("10e-5".to_owned(), false), (1, 46..=51)),
+                Token(Whitespace, (1, 51..=52)),
+                Token(NumericLiteral("2.1e5".to_owned(), false), (1, 52..=57)),
+                Token(Whitespace, (1, 57..=58)),
+                Token(NumericLiteral("2.1e-5".to_owned(), false), (1, 58..=64)),
+                Token(Whitespace, (1, 64..=65)),
+                Token(BooleanLiteral(true), (1, 65..=69)),
+                Token(Whitespace, (1, 69..=70)),
+                Token(BooleanLiteral(false), (1, 70..=75)),
+                Token(EoF, (1, 75..=75))
+            ]
+        );
 
-    //     Ok(())
-    // }
-
-    // #[test]
-    // fn test_lex_literals() -> SectorResult<()> {
-    //     let source = "'c' \"string\" 1 10 .1 0.1 0o10 0x10 0b10 10e5 10e-5 2.1e5 2.1e-5 true false";
-    //     let mut lexer = Lexer::new(source);
-    //     let lexed = lexer.lex()?;
-
-    //     println!("{:?}", lexed);
-
-    //     pretty_assert_eq!(lexed.len(), 31);
-    //     pretty_assert_eq!(lexer.cursor, (1, 75));
-    //     pretty_assert_eq!(
-    //         lexed,
-    //         vec![
-    //             Token(CharacterLiteral('c'), (1, 1..=4)),
-    //             Token(Whitespace, (1, 4..=5)),
-    //             Token(StringLiteral("string".to_owned()), (1, 5..=13)),
-    //             Token(Whitespace, (1, 13..=14)),
-    //             Token(NumericLiteral("1".to_owned(), true), (1, 14..=15)),
-    //             Token(Whitespace, (1, 15..=16)),
-    //             Token(NumericLiteral("10".to_owned(), true), (1, 16..=18)),
-    //             Token(Whitespace, (1, 18..=19)),
-    //             Token(NumericLiteral(".1".to_owned(), true), (1, 19..=21)),
-    //             Token(Whitespace, (1, 21..=22)),
-    //             Token(NumericLiteral("0.1".to_owned(), true), (1, 22..=25)),
-    //             Token(Whitespace, (1, 25..=26)),
-    //             Token(NumericLiteral("0o10".to_owned(), true), (1, 26..=30)),
-    //             Token(Whitespace, (1, 30..=31)),
-    //             Token(NumericLiteral("0x10".to_owned(), true), (1, 31..=35)),
-    //             Token(Whitespace, (1, 35..=36)),
-    //             Token(NumericLiteral("0b10".to_owned(), true), (1, 36..=40)),
-    //             Token(Whitespace, (1, 40..=41)),
-    //             Token(NumericLiteral("10e5".to_owned(), true), (1, 41..=45)),
-    //             Token(Whitespace, (1, 45..=46)),
-    //             Token(NumericLiteral("10e-5".to_owned(), false), (1, 46..=51)),
-    //             Token(Whitespace, (1, 51..=52)),
-    //             Token(NumericLiteral("2.1e5".to_owned(), true), (1, 52..=57)),
-    //             Token(Whitespace, (1, 57..=58)),
-    //             Token(NumericLiteral("2.1e-5".to_owned(), true), (1, 58..=64)),
-    //             Token(NumericLiteral("5".to_owned(), true), (1, 63..=64)),
-    //             Token(Whitespace, (1, 64..=65)),
-    //             Token(BooleanLiteral(true), (1, 65..=69)),
-    //             Token(Whitespace, (1, 69..=70)),
-    //             Token(BooleanLiteral(false), (1, 70..=75)),
-    //             Token(EoF, (1, 75..=75))
-    //         ]
-    //     );
-
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }

@@ -10,6 +10,7 @@ struct SectorArgs {
     path: PathBuf,
 }
 
+#[allow(clippy::redundant_closure)]
 fn mount_lexer(path_to_source: &PathBuf) -> SectorResult<()> {
     let source = fs::read_to_string(path_to_source).map_err(|e| SectorError::IoError(e))?;
 

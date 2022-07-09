@@ -2,7 +2,7 @@
 
 - Query Language
   - [ ] Design language
-  - [ ] Finish lexer
+  - [x] Finish lexer
   - [ ] Finish AST
   - [ ] Syntax highlighter
   - [ ] Codegen
@@ -10,10 +10,10 @@
 
 - Core/Backend
   - [ ] gRPC server
+  - [ ] Concurrency
   - [ ] Cache
   - [ ] Query optimizer/planner
     - [ ] Query executor
-  - [ ] Concurrency
   - [ ] Table engine
     - [ ] Relationships
     - [ ] Indexes
