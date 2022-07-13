@@ -3,6 +3,7 @@
 
 pub mod cache;
 pub mod grpc;
+pub mod interface;
 pub mod malloc;
 pub mod sec;
 pub mod util;

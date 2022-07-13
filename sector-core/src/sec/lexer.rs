@@ -9,7 +9,7 @@ use pretty_assertions::assert_eq as pretty_assert_eq;
 
 /// A token is a lexical unit of the Sec query language.
 /// It can be a punctuation mark, operator, keyword, user-defined identifier, or delimiter.
-/// Delimeters like *whitespace* `(' ')`, *newlines* `('\n')`, and *tabs* `('\t')` are only
+/// Delimiters like *whitespace* `(' ')`, *newlines* `('\n')`, and *tabs* `('\t')` are only
 /// recognized as tokens to separate tokens from each other. Sec's lexer recognizes *EoF* `(End of File)` as a token
 /// to show where the source code ends.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

@@ -11,4 +11,6 @@ pub enum SectorError {
     IoError(#[from] tokio::io::Error),
     #[error(transparent)]
     AllocError(#[from] std::alloc::AllocError),
+    // #[error(transparent)]
+    // GrpcStatus(#[from] tonic::Status),
 }

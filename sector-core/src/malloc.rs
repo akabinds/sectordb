@@ -10,7 +10,7 @@ use std::{
     ptr::NonNull,
 };
 
-/// The global memory allocator for the SectorDB.
+/// The global memory allocator for SectorDB.
 #[derive(Debug, Default, Copy, Clone)]
 pub(crate) struct SectorAlloc;
 

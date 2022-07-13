@@ -11,7 +11,7 @@ repository = "https://github.com/akabinds/sectordb"
 [dependencies]
 tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
 sector-core = { path = "../sector-core" }
-clap = { version = "3.2.8", features = ["derive"] }
+clap = { version = "3.2.10", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.3.6"

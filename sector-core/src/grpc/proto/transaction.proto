@@ -1,0 +1,22 @@
+syntax = "proto3";
+package transaction;
+
+service Transaction {
+    rpc Init(TransactionMetadata) returns (DbTransaction);
+    rpc Commit(DbTransaction) returns (CommittedTransactionResponse);
+}
+
+message TransactionMetadata {
+    string transaction_id = 1;
+    string on_table = 2;
+    string on_column = 3;   
+}
+
+message DbTransaction {
+    TransactionMetadata metadata = 1;
+}
+
+message CommittedTransactionResponse {
+    DbTransaction transaction = 1;
+    bool success = 2;
+}
