@@ -9,3 +9,4 @@ erl_crash.dump
 *.ez
 sector_core-*.tar
 tmp/
+priv/

@@ -1201,7 +1201,7 @@ version = "0.1.0"
 dependencies = [
  "clap 3.2.10",
  "criterion",
- "sector-core",
+ "sector_core",
  "tokio",
 ]
 
@@ -1209,11 +1209,11 @@ dependencies = [
 name = "sector-api"
 version = "0.1.0"
 dependencies = [
- "sector-core",
+ "sector_core",
 ]
 
 [[package]]
-name = "sector-core"
+name = "sector_core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",

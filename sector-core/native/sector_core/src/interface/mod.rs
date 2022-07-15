@@ -1,6 +1,6 @@
 //! Module implementing the interface for databases and tables.
 
-use rustler::NifStruct;
+use rustler::{Env, NifStruct, Term};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, sync::Arc};
 use tokio::sync::RwLock;
@@ -20,14 +20,16 @@ impl fmt::Debug for Database {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, NifStruct)]
-#[module = "SectorCore.InterfaceTypes"]
+#[module = "SectorCore.Native.InterfaceTypes.Table"]
 pub struct Table {
     pub identifier: String,
     pub columns: HashMap<String, Column>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, NifStruct)]
-#[module = "SectorCore.InterfaceTypes"]
+#[module = "SectorCore.Native.InterfaceTypes.Column"]
 pub struct Column {
     pub identifier: String,
 }
+
+rustler::init!("Elixir.SectorCore.Native", []);

@@ -10,12 +10,12 @@ repository = "https://github.com/akabinds/sectordb"
 
 [dependencies]
 tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
-sector-core = { path = "../sector-core/native/sector-core" }
+sector_core = { path = "../sector-core/native/sector_core" }
 clap = { version = "3.2.10", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.3.6"
-sector-core = { path = "../sector-core/native/sector-core" }
+sector_core = { path = "../sector-core/native/sector_core" }
 
 [[bin]]
 name = "sector"
