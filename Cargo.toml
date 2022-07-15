@@ -2,8 +2,7 @@
 members = [
     "sector",
     "sector-api",
-    "sector-core",
-    "sector-core/src/concurrency/native/sector-concurrency",
+    "sector-core/native/sector-core",
 ]
 
 [profile.release]

@@ -7,4 +7,4 @@ description = "Public interface for interacting with and extending SectorDB"
 readme = "../README.md"
 
 [dependencies]
-sector-core = { path = "../sector-core" }
+sector-core = { path = "../sector-core/native/sector-core" }

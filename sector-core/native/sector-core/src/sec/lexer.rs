@@ -144,7 +144,7 @@ pub struct Token(TokenKind, (usize, RangeInclusive<usize>));
 /// # Examples
 ///
 /// ```
-/// use sector_core::{util::SectorResult,sec::lexer::Lexer};
+/// use sector_core::{util::SectorResult, sec::lexer::Lexer};
 ///
 /// fn test_lex() -> SectorResult<()> {
 ///     let source = "select * from users;";

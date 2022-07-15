@@ -3,9 +3,16 @@ name = "sector-core"
 version = "0.1.0"
 edition = "2021"
 authors = ["Sector Developers"]
-readme = "../README.md"
+readme = "../../../README.md"
+
+[lib]
+name = "sector_core"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+rustler = "0.25.0"
+bytemuck = "1.10.0"
 bytes = "1.1.0"
 chrono = "0.4.19"
 concurrent-queue = "1.2.2"
