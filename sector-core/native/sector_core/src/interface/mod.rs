@@ -1,5 +1,7 @@
 //! Module implementing the interface for databases and tables.
 
+mod types;
+
 use rustler::{Env, NifStruct, Term};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, sync::Arc};
@@ -8,6 +10,15 @@ use tokio::sync::RwLock;
 pub struct Database {
     pub identifier: String,
     pub tables: HashMap<String, Arc<RwLock<Table>>>,
+}
+
+impl Database {
+    pub fn new(identifier: String) -> Self {
+        Self {
+            identifier,
+            tables: HashMap::new(),
+        }
+    }
 }
 
 impl fmt::Debug for Database {

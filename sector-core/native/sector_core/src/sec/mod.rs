@@ -4,7 +4,7 @@ pub(crate) mod ast;
 mod codegen;
 pub mod lexer;
 
-const RESERVED_IDENTIFIERS: [&str; 45] = [
+const RESERVED_IDENTIFIERS: [&str; 48] = [
     "proc",
     "index",
     "on",
@@ -28,7 +28,7 @@ const RESERVED_IDENTIFIERS: [&str; 45] = [
     "with",
     "bind",
     "within",
-    "scale",
+    "scan",
     "down",
     "up",
     "str",
@@ -50,4 +50,7 @@ const RESERVED_IDENTIFIERS: [&str; 45] = [
     "complex",
     "true",
     "false",
+    "if",
+    "elif",
+    "else",
 ];

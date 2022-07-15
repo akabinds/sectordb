@@ -53,7 +53,7 @@ enum TokenKind {
     BwShiftR,
     BwShiftL,
     In,
-    Binding,
+    Bind,
     This,
 
     // Keywords
@@ -118,7 +118,7 @@ impl fmt::Display for TokenKind {
             BwShiftR => write!(f, ">>"),
             BwShiftL => write!(f, "<<"),
             In => write!(f, "=>"),
-            Binding => write!(f, "->"),
+            Bind => write!(f, "->"),
             This => write!(f, "@"),
             Keyword(s) => write!(f, "{}", s),
             StringLiteral(s) => write!(f, "{}", s),
@@ -297,7 +297,7 @@ impl<'a> Lexer<'a> {
                     .or_else(|| {
                         matches!(self.peek(), Some(&'>')).then(|| {
                             self.advance();
-                            Ok(self.new_token(Binding, 2))
+                            Ok(self.new_token(Bind, 2))
                         })
                     })
                     .unwrap_or_else(|| Ok(self.new_token(Sub, 1))),
@@ -536,7 +536,7 @@ mod tests {
         pretty_assert_eq!(
             lexed,
             vec![
-                Token(Binding, (1, 1..=3)),
+                Token(Bind, (1, 1..=3)),
                 Token(Whitespace, (1, 3..=4)),
                 Token(EqTo, (1, 4..=6)),
                 Token(Whitespace, (1, 6..=7)),
