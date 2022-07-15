@@ -1,3 +1,6 @@
+#[cfg(test)]
+use pretty_assertions::assert_eq as pretty_assert_eq;
+
 use super::lexer::Lexer;
 use crate::util::SectorResult;
 use std::{fmt, string::String};
@@ -188,11 +191,10 @@ impl fmt::Display for Statement {
                         .map(|(ident, ty)| format!("{}: {}", ident, ty))
                         .collect::<Vec<String>>()
                         .join(", "),
-                    body.to_string()
+                    body
                 ),
-                Self::Binding { ident, value } =>
-                    format!("bind {} -> {}", ident, value.to_string()),
-                Return(e) => format!("return {}", e.to_string()),
+                Self::Binding { ident, value } => format!("bind {} -> {}", ident, value),
+                Return(e) => format!("return {}", e),
             }
         )
     }

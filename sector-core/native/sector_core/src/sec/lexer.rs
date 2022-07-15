@@ -1,11 +1,11 @@
+#[cfg(test)]
+use pretty_assertions::assert_eq as pretty_assert_eq;
+
 use super::RESERVED_IDENTIFIERS;
 use crate::util::{SectorError, SectorResult};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt, iter::Peekable, ops::RangeInclusive, str::Chars};
 use TokenKind::*;
-
-#[cfg(test)]
-use pretty_assertions::assert_eq as pretty_assert_eq;
 
 /// A token is a lexical unit of the Sec query language.
 /// It can be a punctuation mark, operator, keyword, user-defined identifier, or delimiter.
@@ -614,12 +614,12 @@ mod tests {
 
     #[test]
     fn test_lex_keywords() -> SectorResult<()> {
-        let source = "proc index on transaction exec return cursor drop from update where set match right left inner temp select insert into with bind within scale down up str int shortint tinyint bigint bool float bin hex scn guid arr obj char bit complex";
+        let source = "proc index on transaction exec return cursor drop from update where set match right left inner temp select insert into with bind within scan down up str int shortint tinyint bigint bool float bin hex scn guid arr obj char bit complex";
         let mut lexer = Lexer::new(source);
         let lexed = lexer.lex()?;
 
         pretty_assert_eq!(lexed.len(), 84);
-        pretty_assert_eq!(lexer.cursor, (1, 235));
+        pretty_assert_eq!(lexer.cursor, (1, 234));
         pretty_assert_eq!(
             lexed,
             vec![
@@ -669,44 +669,44 @@ mod tests {
                 Token(Whitespace, (1, 129..=130)),
                 Token(Keyword("within".to_owned()), (1, 130..=136)),
                 Token(Whitespace, (1, 136..=137)),
-                Token(Keyword("scale".to_owned()), (1, 137..=142)),
-                Token(Whitespace, (1, 142..=143)),
-                Token(Keyword("down".to_owned()), (1, 143..=147)),
-                Token(Whitespace, (1, 147..=148)),
-                Token(Keyword("up".to_owned()), (1, 148..=150)),
-                Token(Whitespace, (1, 150..=151)),
-                Token(Keyword("str".to_owned()), (1, 151..=154)),
-                Token(Whitespace, (1, 154..=155)),
-                Token(Keyword("int".to_owned()), (1, 155..=158)),
-                Token(Whitespace, (1, 158..=159)),
-                Token(Keyword("shortint".to_owned()), (1, 159..=167)),
-                Token(Whitespace, (1, 167..=168)),
-                Token(Keyword("tinyint".to_owned()), (1, 168..=175)),
-                Token(Whitespace, (1, 175..=176)),
-                Token(Keyword("bigint".to_owned()), (1, 176..=182)),
-                Token(Whitespace, (1, 182..=183)),
-                Token(Keyword("bool".to_owned()), (1, 183..=187)),
-                Token(Whitespace, (1, 187..=188)),
-                Token(Keyword("float".to_owned()), (1, 188..=193)),
-                Token(Whitespace, (1, 193..=194)),
-                Token(Keyword("bin".to_owned()), (1, 194..=197)),
-                Token(Whitespace, (1, 197..=198)),
-                Token(Keyword("hex".to_owned()), (1, 198..=201)),
-                Token(Whitespace, (1, 201..=202)),
-                Token(Keyword("scn".to_owned()), (1, 202..=205)),
-                Token(Whitespace, (1, 205..=206)),
-                Token(Keyword("guid".to_owned()), (1, 206..=210)),
-                Token(Whitespace, (1, 210..=211)),
-                Token(Keyword("arr".to_owned()), (1, 211..=214)),
-                Token(Whitespace, (1, 214..=215)),
-                Token(Keyword("obj".to_owned()), (1, 215..=218)),
-                Token(Whitespace, (1, 218..=219)),
-                Token(Keyword("char".to_owned()), (1, 219..=223)),
-                Token(Whitespace, (1, 223..=224)),
-                Token(Keyword("bit".to_owned()), (1, 224..=227)),
-                Token(Whitespace, (1, 227..=228)),
-                Token(Keyword("complex".to_owned()), (1, 228..=235)),
-                Token(EoF, (1, 235..=235))
+                Token(Keyword("scan".to_owned()), (1, 137..=141)),
+                Token(Whitespace, (1, 141..=142)),
+                Token(Keyword("down".to_owned()), (1, 142..=146)),
+                Token(Whitespace, (1, 146..=147)),
+                Token(Keyword("up".to_owned()), (1, 147..=149)),
+                Token(Whitespace, (1, 149..=150)),
+                Token(Keyword("str".to_owned()), (1, 150..=153)),
+                Token(Whitespace, (1, 153..=154)),
+                Token(Keyword("int".to_owned()), (1, 154..=157)),
+                Token(Whitespace, (1, 157..=158)),
+                Token(Keyword("shortint".to_owned()), (1, 158..=166)),
+                Token(Whitespace, (1, 166..=167)),
+                Token(Keyword("tinyint".to_owned()), (1, 167..=174)),
+                Token(Whitespace, (1, 174..=175)),
+                Token(Keyword("bigint".to_owned()), (1, 175..=181)),
+                Token(Whitespace, (1, 181..=182)),
+                Token(Keyword("bool".to_owned()), (1, 182..=186)),
+                Token(Whitespace, (1, 186..=187)),
+                Token(Keyword("float".to_owned()), (1, 187..=192)),
+                Token(Whitespace, (1, 192..=193)),
+                Token(Keyword("bin".to_owned()), (1, 193..=196)),
+                Token(Whitespace, (1, 196..=197)),
+                Token(Keyword("hex".to_owned()), (1, 197..=200)),
+                Token(Whitespace, (1, 200..=201)),
+                Token(Keyword("scn".to_owned()), (1, 201..=204)),
+                Token(Whitespace, (1, 204..=205)),
+                Token(Keyword("guid".to_owned()), (1, 205..=209)),
+                Token(Whitespace, (1, 209..=210)),
+                Token(Keyword("arr".to_owned()), (1, 210..=213)),
+                Token(Whitespace, (1, 213..=214)),
+                Token(Keyword("obj".to_owned()), (1, 214..=217)),
+                Token(Whitespace, (1, 217..=218)),
+                Token(Keyword("char".to_owned()), (1, 218..=222)),
+                Token(Whitespace, (1, 222..=223)),
+                Token(Keyword("bit".to_owned()), (1, 223..=226)),
+                Token(Whitespace, (1, 226..=227)),
+                Token(Keyword("complex".to_owned()), (1, 227..=234)),
+                Token(EoF, (1, 234..=234))
             ]
         );
 
