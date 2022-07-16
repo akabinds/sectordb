@@ -1,6 +1,6 @@
-//! Module implementing the interface for databases and tables.
+//! Module implementing the interface for databases, tables, columns, and datatypes.
 
-mod types;
+mod datatypes;
 
 use rustler::{Env, NifStruct, Term};
 use serde::{Deserialize, Serialize};
@@ -31,14 +31,23 @@ impl fmt::Debug for Database {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, NifStruct)]
-#[module = "SectorCore.Native.InterfaceTypes.Table"]
+#[module = "SectorCore.Native.Interface.Table"]
 pub struct Table {
     pub identifier: String,
     pub columns: HashMap<String, Column>,
 }
 
+impl Table {
+    pub fn new(identifier: String) -> Self {
+        Self {
+            identifier,
+            columns: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, NifStruct)]
-#[module = "SectorCore.Native.InterfaceTypes.Column"]
+#[module = "SectorCore.Native.Interface.Column"]
 pub struct Column {
     pub identifier: String,
 }

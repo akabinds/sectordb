@@ -13,4 +13,6 @@ pub enum SectorError {
     AllocError(#[from] std::alloc::AllocError),
     // #[error(transparent)]
     // GrpcStatus(#[from] tonic::Status),
+    // #[error(transparent)]
+    // NifError(#[from] rustler::Error),
 }
