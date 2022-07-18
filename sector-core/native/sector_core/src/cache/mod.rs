@@ -116,17 +116,6 @@ where
     key: *const K,
 }
 
-impl<K> KeyRef<K>
-where
-    K: Eq + Hash + Send + Sync,
-{
-    fn new(key: &K) -> Self {
-        Self {
-            key: key as *const K,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct RawCache<K, V, H = RandomState, A = SectorAlloc>
 where
@@ -172,7 +161,9 @@ where
     }
 
     fn remove(&mut self, key: &K) -> Option<CacheEntry<K, V>> {
-        let removed = (*self).remove_entry(&KeyRef::new(key))?;
+        let removed = (*self).remove_entry(&KeyRef {
+            key: key as *const _,
+        })?;
 
         todo!();
     }
