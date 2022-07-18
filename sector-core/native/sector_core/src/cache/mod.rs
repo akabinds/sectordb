@@ -14,6 +14,7 @@ use std::{
     collections::{hash_map::RandomState, HashMap, VecDeque},
     fmt,
     hash::{BuildHasher, Hash},
+    mem,
     ops,
     ptr,
     time::{Duration, Instant},
@@ -105,18 +106,6 @@ where
             next: ptr::null_mut(),
         }
     }
-
-    fn extract_key(&self) -> &K {
-        &self.key
-    }
-
-    fn extract_value(&self) -> &V {
-        &self.value
-    }
-
-    fn set_status(&mut self, status: CacheEntryStatus) {
-        self.status = status;
-    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -168,16 +157,18 @@ where
         }
     }
 
-    #[allow(clippy::let_and_return)]
-    fn put(&mut self, key: K, value: V) -> Option<CacheEntry<K, V>> {
-        let inserted = (*self).insert(
-            KeyRef {
-                key: &key as *const K,
-            },
-            CacheEntry::new(key, value),
-        );
+    /// Insert a new entry into the cache. This function will determine whether to overwrite an entry or insert a totally new entry
+    /// based on if a pointer to the entry is able to be retrieved from the cache.
+    fn put(&mut self, key: K, mut value: V) -> Option<CacheEntry<K, V>> {
+        let ptr_if_exists = (*self)
+            .get_mut(&KeyRef { key: &key })
+            .map(|entry| &mut *entry as *mut _);
 
-        inserted
+        if let Some(entry_ptr) = ptr_if_exists {
+            self.overwrite(&mut value, entry_ptr)
+        } else {
+            self.put_new(key, value)
+        }
     }
 
     fn remove(&mut self, key: &K) -> Option<CacheEntry<K, V>> {
@@ -190,10 +181,61 @@ where
         todo!();
     }
 
-    fn overwrite(&mut self, key: K, value: V) -> Option<CacheEntry<K, V>> {
-        let entry_as_mut = (*self).get_mut(&KeyRef::new(&key))?;
+    #[inline]
+    fn overwrite(
+        &mut self,
+        new_value: &mut V,
+        entry_ptr: *mut CacheEntry<K, V>,
+    ) -> Option<CacheEntry<K, V>> {
+        unsafe { mem::swap(new_value, &mut (*entry_ptr).value) }
+        self.detach(entry_ptr);
+        self.attach(entry_ptr);
+        Some(unsafe { ptr::read(entry_ptr) })
+    }
 
-        todo!();
+    #[inline]
+    fn put_new(&mut self, mut key: K, mut value: V) -> Option<CacheEntry<K, V>> {
+        if self.size() > self.capacity() {
+            // remove the least recently used entry
+            let head = KeyRef {
+                key: unsafe { &(*self.head).key as *const _ },
+            };
+            let mut to_remove = (**self).remove(&head)?;
+            let to_remove_mut = &mut to_remove;
+
+            // incomplete
+
+            None
+        } else {
+            // the cache is not full. just insert a new entry
+            let mut entry = CacheEntry::new(key, value);
+            self.attach(&mut entry);
+
+            (*self).insert(
+                KeyRef {
+                    key: &entry.key as *const _,
+                },
+                entry,
+            );
+
+            None
+        }
+    }
+
+    fn attach(&mut self, entry_ptr: *mut CacheEntry<K, V>) {
+        unsafe {
+            (*entry_ptr).next = (*self.head).next;
+            (*entry_ptr).prev = self.head;
+            (*self.head).next = entry_ptr;
+            (*(*entry_ptr).next).prev = entry_ptr;
+        }
+    }
+
+    fn detach(&mut self, entry_ptr: *mut CacheEntry<K, V>) {
+        unsafe {
+            (*(*entry_ptr).prev).next = (*entry_ptr).next;
+            (*(*entry_ptr).next).prev = (*entry_ptr).prev;
+        }
     }
 
     fn evict(&mut self, key: K) -> Option<CacheEntry<K, V>> {
@@ -204,6 +246,7 @@ where
         todo!();
     }
 
+    /// Reserve extra space in the cache store for `to_reserve` extra entries.
     fn reserve(&mut self, to_reserve: usize) -> SectorResult<()> {
         (*self)
             .try_reserve(to_reserve)
@@ -212,8 +255,17 @@ where
         Ok(())
     }
 
+    /// Shrink the minimum capacity of the cache store to `min` entries.
     fn shrink(&mut self, min: usize) {
         (*self).shrink_to(min);
+    }
+
+    fn size(&self) -> usize {
+        (*self).len()
+    }
+
+    fn capacity(&self) -> usize {
+        self.capacity
     }
 }
 
@@ -311,4 +363,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // #[test]
+    // fn test_cache_put_protected() -> SectorResult<()> {
+    //     let mut cache: Cache<i32, i32> = Cache::new(10, 10)?;
+    //     cache.put_protected(1, 1);
+
+    //     println!("{:#?}", cache.protected_store);
+
+    //     Ok(())
+    // }
 }
