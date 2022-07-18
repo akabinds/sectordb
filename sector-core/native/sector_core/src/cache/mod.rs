@@ -160,15 +160,8 @@ where
         }
     }
 
-    fn remove(&mut self, key: &K) -> Option<CacheEntry<K, V>> {
-        let removed = (*self).remove_entry(&KeyRef {
-            key: key as *const _,
-        })?;
-
-        todo!();
-    }
-
-    fn transfer(&mut self, key: &K) {
+    #[inline]
+    fn transfer(&mut self, to: &mut Self, key: &K) -> Option<CacheEntry<K, V>> {
         todo!();
     }
 
@@ -191,12 +184,9 @@ where
             let head = KeyRef {
                 key: unsafe { &(*self.head).key as *const _ },
             };
-            let mut to_remove = (**self).remove(&head)?;
-            let to_remove_mut = &mut to_remove;
+            self.evict(head);
 
             // incomplete
-
-            None
         } else {
             // the cache is not full. just insert a new entry
             let mut entry = CacheEntry::new(key, value);
@@ -208,20 +198,26 @@ where
                 },
                 entry,
             );
-
-            None
         }
+
+        None
     }
 
+    #[inline]
     fn attach(&mut self, entry_ptr: *mut CacheEntry<K, V>) {
         unsafe {
-            (*entry_ptr).next = (*self.head).next;
-            (*entry_ptr).prev = self.head;
-            (*self.head).next = entry_ptr;
-            (*(*entry_ptr).next).prev = entry_ptr;
+            if self.head.is_null() {
+                self.head = entry_ptr;
+                self.tail = entry_ptr;
+            } else {
+                (*entry_ptr).prev = self.tail;
+                (*self.tail).next = entry_ptr;
+                self.tail = entry_ptr;
+            }
         }
     }
 
+    #[inline]
     fn detach(&mut self, entry_ptr: *mut CacheEntry<K, V>) {
         unsafe {
             (*(*entry_ptr).prev).next = (*entry_ptr).next;
@@ -229,12 +225,12 @@ where
         }
     }
 
-    fn evict(&mut self, key: K) -> Option<CacheEntry<K, V>> {
-        let to_evict = (*self).get_mut(&KeyRef {
-            key: &key as *const K,
-        })?;
+    #[inline]
+    fn evict(&mut self, key: KeyRef<K>) -> Option<()> {
+        let to_evict = (**self).remove(&key);
+        self.detach(&mut to_evict? as *mut _);
 
-        todo!();
+        Some(())
     }
 
     /// Reserve extra space in the cache store for `to_reserve` extra entries.
@@ -343,10 +339,10 @@ where
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_probationary(&mut self, key: K) -> Option<CacheEntry<K, V>> {
-        todo!();
+        self.protected_store.transfer(&mut self.probationary_store, &key)
     }
 
-    pub fn evict(&mut self, key: K) -> Option<CacheEntry<K, V>> {
+    pub fn evict(&mut self, key: KeyRef<K>) -> Option<()> {
         self.probationary_store.evict(key)
     }
 }
@@ -357,8 +353,9 @@ mod tests {
 
     // #[test]
     // fn test_cache_put_protected() -> SectorResult<()> {
-    //     let mut cache: Cache<i32, i32> = Cache::new(10, 10)?;
+    //     let mut cache: Cache<i32, i32> = Cache::new(1, 5)?;
     //     cache.put_protected(1, 1);
+    //     cache.put_protected(2, 2);
 
     //     println!("{:#?}", cache.protected_store);
 
