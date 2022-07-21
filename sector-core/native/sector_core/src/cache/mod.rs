@@ -239,6 +239,8 @@ where
             .try_reserve(to_reserve)
             .map_err(|_| SectorError::CacheError("failed to reserve additional cache space"))?;
 
+        self.capacity += to_reserve;
+
         Ok(())
     }
 
@@ -337,9 +339,9 @@ where
         self.protected_store.put(key, value)
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_probationary(&mut self, key: K) -> Option<CacheEntry<K, V>> {
-        self.protected_store.transfer(&mut self.probationary_store, &key)
+    pub fn transfer_to_probationary(&mut self, key: K) -> Option<CacheEntry<K, V>> {
+        self.protected_store
+            .transfer(&mut self.probationary_store, &key)
     }
 
     pub fn evict(&mut self, key: KeyRef<K>) -> Option<()> {
@@ -361,4 +363,18 @@ mod tests {
 
     //     Ok(())
     // }
+
+    #[test]
+    fn test_cache_reserve() -> SectorResult<()> {
+        let mut cache: Cache<i32, i32> = Cache::new(1, 5)?;
+
+        pretty_assert_eq!(cache.probationary_store.capacity(), 1);
+        pretty_assert_eq!(cache.protected_store.capacity(), 5);
+
+        cache.probationary_store.reserve(4)?;
+
+        pretty_assert_eq!(cache.probationary_store.capacity(), 5);
+
+        Ok(())
+    }
 }
