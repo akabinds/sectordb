@@ -11,7 +11,7 @@ use {
 
 /// Literal kinds
 #[derive(Debug, Clone, PartialEq)]
-enum LiteralKind {
+pub(super) enum LiteralKind {
     String(String),
     Character(char),
     Boolean(bool),
@@ -158,7 +158,7 @@ impl fmt::Display for BinaryOperatorKind {
 /// Statements are the building block of the Sec query language.
 /// All statements end with a semicolon.
 #[derive(Debug, Clone, PartialEq)]
-enum Statement {
+pub(super) enum Statement {
     Expression(Expr),
     Procedure {
         ident: String,
@@ -202,7 +202,7 @@ impl fmt::Display for Statement {
 
 /// Expressions are things that evaluate to some value
 #[derive(Debug, Clone, PartialEq)]
-enum Expr {
+pub(super) enum Expr {
     Literal(LiteralKind),
     Binding { ident: String, value: Box<Expr> },
     ProcCall { ident: String, args: Vec<Expr> },

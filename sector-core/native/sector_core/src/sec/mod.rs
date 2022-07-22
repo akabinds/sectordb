@@ -1,11 +1,13 @@
 //! SectorDB's query language
 
-pub(crate) mod ast;
+mod ast;
 mod codegen;
 pub mod lexer;
+mod parser;
 
 use crate::util::{SectorError, SectorResult};
 use lexer::Lexer;
+use parser::Parser;
 use std::{fs, path::PathBuf};
 
 #[allow(clippy::redundant_closure)]
@@ -16,10 +18,12 @@ pub fn mount_parser(path_to_source: &PathBuf) -> SectorResult<()> {
     let tokens = lexer.lex();
 
     if tokens.is_ok() {
-        println!("{:?}", tokens?);
+        println!("{:?}", tokens.as_ref().unwrap());
     } else {
-        eprintln!("{}", tokens.unwrap_err());
+        eprintln!("{}", tokens.as_ref().unwrap_err());
     }
+
+    let mut parser = Parser::new(tokens?);
 
     Ok(())
 }

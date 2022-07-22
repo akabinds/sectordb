@@ -35,7 +35,7 @@ repos:
         pass_filenames: false
 
       - id: mix-test
-        name: mix-test 
+        name: mix-test
         language: system
         files: '\.exs*$'
         entry: mix test
