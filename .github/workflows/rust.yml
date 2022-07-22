@@ -19,7 +19,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable, nightly
+          toolchain: nightly
           override: true
           components: rustfmt, clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
@@ -40,7 +40,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable, nightly
+          toolchain: nightly
           override: true
       - name: Run tests in debug
         run: cargo test --verbose --locked
@@ -61,7 +61,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable, nightly
+          toolchain: nightly
           override: true
       - name: Build release
         run: cargo build --verbose --locked --release
