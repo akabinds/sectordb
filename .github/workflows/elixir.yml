@@ -25,15 +25,16 @@ jobs:
       - name: Dependency cache
         uses: actions/cache@v3.0.5
         with:
-          path: deps/
+          path: sector-core/deps/
           key: >-
             deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
       - name: Build cache
         uses: actions/cache@v3.0.5
         with:
-          path: _build/test
+          path: sector-core/_build/test
           key: >-
             build-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+      - run: cd sector-core
       - name: Install dependencies
         run: mix deps.get
       - name: Checks
