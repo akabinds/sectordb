@@ -7,6 +7,7 @@ on:
 
 env:
   MIX_ENV: test
+  RUST_TOOLCHAIN: nightly-2022-07-21
 
 jobs:
   checks:
