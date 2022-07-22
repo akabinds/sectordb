@@ -1,0 +1,67 @@
+name: Rust
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Run clippy, rustfmt, check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2.0.0
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable, nightly
+          override: true
+          components: rustfmt, clippy
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo fmt --all -- --check
+      - run: cargo check --verbose --all-targets --profile=test
+
+  test:
+    name: Run tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2.0.0
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable, nightly
+          override: true
+      - name: Run tests in debug
+        run: cargo test --verbose --locked
+      - name: Run tests in release
+        run: cargo test --verbose --locked --release
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2.0.0
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable, nightly
+          override: true
+      - name: Build release
+        run: cargo build --verbose --locked --release

@@ -27,11 +27,17 @@ repos:
         files: '\.rs$'
         entry: cargo clippy --all-targets --all-features -- -D warnings
         pass_filenames: false
-      - id: rust-test
-        name: rust-test
+      - id: rust-test-debug
+        name: rust-test-debug
         language: system
         files: '\.rs$'
-        entry: cargo test --verbose
+        entry: cargo test --verbose --locked
+        pass_filenames: false
+      - id: rust-test-release
+        name: rust-test-debug
+        language: system
+        files: '\.rs$'
+        entry: cargo test --verbose --locked --release
         pass_filenames: false
 
       - id: mix-test

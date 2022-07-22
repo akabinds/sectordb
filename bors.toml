@@ -1,0 +1,5 @@
+status = [
+    'Run clippy, rustfmt, check',
+    'Run tests',
+    'Build'
+]
