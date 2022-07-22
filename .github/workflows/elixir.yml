@@ -1,1 +1,45 @@
-# name: Elixir
+name: Elixir
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+env:
+  MIX_ENV: test
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        otp: ["25.0.3"]
+        elixir: ["1.13.4"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1.11.2
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - name: Dependency cache
+        uses: actions/cache@v3.0.5
+        with:
+          path: deps/
+          key: >-
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+      - name: Build cache
+        uses: actions/cache@v3.0.5
+        with:
+          path: _build/test
+          key: >-
+            build-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+      - name: Install dependencies
+        run: mix deps.get
+      - name: Checks
+        run: |
+          mix deps.unlock --check-unused
+          mix format --check-formatted
+          mix credo --strict
+      - name: Compile
+        run: mix compile --force --warnings-as-errors
