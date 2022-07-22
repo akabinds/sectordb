@@ -34,13 +34,17 @@ jobs:
           path: sector-core/_build/test
           key: >-
             build-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
-      - run: cd sector-core
       - name: Install dependencies
-        run: mix deps.get
+        run: |
+          cd sector-core
+          mix deps.get
       - name: Checks
         run: |
+          cd sector-core
           mix deps.unlock --check-unused
           mix format --check-formatted
           mix credo --strict
       - name: Compile
-        run: mix compile --force --warnings-as-errors
+        run: |
+          cd sector-core
+          mix compile --force --warnings-as-errors
