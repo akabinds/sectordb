@@ -2,15 +2,15 @@
 use pretty_assertions::assert_eq as pretty_assert_eq;
 
 use super::{
-    ast::Statement,
+    ast::{Node, NodeKind, Statement},
     lexer::{Lexer, Token},
 };
 use crate::util::SectorResult;
 
-/// Data structure returned by the parser that represents a query.
+/// Data structure returned by the parser that represents a query AST.
 /// This will be used throughout the project, most notably in the query planner and executor.
 pub(crate) struct Query {
-    statements: Vec<Statement>,
+    nodes: Vec<Node>,
 }
 
 pub(super) struct Parser {
@@ -24,6 +24,9 @@ impl Parser {
 
     /// Parse the tokens into an AST.
     pub(super) fn parse(&mut self) -> SectorResult<Query> {
-        todo!();
+        let mut nodes: Vec<Node> = vec![];
+        let tokens = &self.tokens;
+
+        Ok(Query { nodes })
     }
 }

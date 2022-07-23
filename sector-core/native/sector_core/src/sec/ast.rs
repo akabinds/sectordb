@@ -3,11 +3,28 @@ use pretty_assertions::assert_eq as pretty_assert_eq;
 
 use super::lexer::Lexer;
 use crate::util::SectorResult;
-use std::{fmt, string::String};
+use std::{fmt, rc::Rc, string::String};
 use {
     BinaryOperatorKind::*, Expr::*, LiteralKind::*, PunctuationKind::*, Statement::*,
     UnaryOperatorKind::*,
 };
+
+/// The kind of a Query AST node.
+pub(super) enum NodeKind {
+    Literal(LiteralKind),
+    Punctuation(PunctuationKind),
+    UnaryOperator(UnaryOperatorKind),
+    BinaryOperator(BinaryOperatorKind),
+    Statement(Statement),
+    Expression(Expr),
+}
+
+/// A node in the Query AST generated from the parser.
+pub(super) struct Node {
+    pub kind: NodeKind,
+    parent: Rc<Node>,
+    children: Vec<Rc<Node>>,
+}
 
 /// Literal kinds
 #[derive(Debug, Clone, PartialEq)]
@@ -35,7 +52,7 @@ impl fmt::Display for LiteralKind {
 
 /// Punctuation in the Sec query language
 #[derive(Debug, Clone, PartialEq)]
-enum PunctuationKind {
+pub(super) enum PunctuationKind {
     Comma,
     Period,
     Semicolon,
@@ -69,7 +86,7 @@ impl fmt::Display for PunctuationKind {
 
 /// Unary operators
 #[derive(Debug, Clone, PartialEq)]
-enum UnaryOperatorKind {
+pub(super) enum UnaryOperatorKind {
     SqRoot,
     CbRoot,
     Abs,
@@ -101,7 +118,7 @@ impl fmt::Display for UnaryOperatorKind {
 
 /// Binary operators
 #[derive(Debug, Clone, PartialEq)]
-enum BinaryOperatorKind {
+pub(super) enum BinaryOperatorKind {
     LogAnd,
     LogOr,
     Add,

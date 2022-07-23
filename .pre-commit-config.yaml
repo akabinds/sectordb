@@ -44,22 +44,22 @@ repos:
         name: mix-test
         language: system
         files: '\.exs*$'
-        entry: mix test
+        entry: bash -c 'cd sector-core && mix test'
         pass_filenames: false
       - id: mix-fmt
         name: mix-fmt
         language: system
         files: '\.exs*$'
-        entry: mix format --check-formatted
+        entry: bash -c 'cd sector-core && mix format --check-formatted'
       - id: mix-compile
         name: mix-compile
         language: system
         files: '\.ex$'
-        entry: mix compile --force --warnings-as-errors
+        entry: bash -c 'cd sector-core && mix compile --force --warnings-as-errors'
         pass_filenames: false
       - id: mix-credo
         name: mix-credo
         language: system
         files: '\.exs*$'
-        entry: mix credo
+        entry: bash -c 'cd sector-core && mix credo'
         pass_filenames: false

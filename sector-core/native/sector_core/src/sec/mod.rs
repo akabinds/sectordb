@@ -3,7 +3,7 @@
 mod ast;
 mod codegen;
 pub mod lexer;
-mod parser;
+pub(crate) mod parser;
 
 use crate::util::{SectorError, SectorResult};
 use lexer::Lexer;
